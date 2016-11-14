@@ -5,7 +5,7 @@
  */
 
 wa = {
-	helperHost : "http://127.0.0.1:9300",
+	helperHost : "",
 	helperKey : "",
 	url : "", //current url
 	ready : false, //helper API is ready
@@ -111,6 +111,15 @@ wa.system = {
 
 	speak : function(text){
 		wa.sendEvent("speak", { text: text } );
+	},
+	clipboardSet : function(text){
+		wa.sendMessage("clipboardSet", { window: wa.window.uuid, text: text }, function(o){} );
+	},
+	clipboardGet : function(callback){
+		wa.sendMessage("clipboardGet", { window: wa.window.uuid }, function(o){callback(o)} );
+	},
+	messageDialog: function(ops, callback){
+		wa.sendMessage("messageDialog", ops, callback );
 	}
 };
 
@@ -211,6 +220,9 @@ wa.fs = {
 	writeToFile : function(path, data, callback){
 		wa.sendMessage('writetofile', { path: path, data: data }, callback );
 	},
+	writeBase64DataToFile : function(path, data, callback){
+		wa.sendMessage('writetofile', { path: path, data: data, base64:true }, callback );
+	},
 	getContents : function(path, callback){
 		wa.sendMessage('getcontents', { path: path }, callback );
 	},
@@ -220,4 +232,9 @@ wa.fs = {
 	dialogSelectDirectory : function(callback){
 		wa.sendMessage('dialogselectdirectory', { }, callback );
 	},
+	writePNG : function(path, base64DataUrl, callback){
+		var data = base64DataUrl.replace(/^data:image\/png\;base64\,/, ''); //remove mime
+
+		wa.fs.writeBase64DataToFile(path, data, callback);
+	}
 };
