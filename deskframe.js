@@ -1,12 +1,11 @@
 /*
  *  DeskFrame Helper API
- *  Version 1.0, Jose L Cuevas
+ *  Version 1.2, Jose L Cuevas
  *  http://expresscode.org/deskframe
  */
 
+
 wa = {
-	helperHost : "",
-	helperKey : "",
 	url : "", //current url
 	ready : false, //helper API is ready
 	sendEvent : function( msg , data){
@@ -50,8 +49,8 @@ wa = {
 		$payload = JSON.stringify(message.m);
 
 		rq.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-		rq.setRequestHeader("Content-length", $payload.length);
-		rq.setRequestHeader("Connection", "close");
+		//rq.setRequestHeader("Content-length", $payload.length);
+		//rq.setRequestHeader("Connection", "close");
 		rq.send($payload);
 
 		var fd = new FormData();
@@ -80,13 +79,15 @@ wa = {
 		}
 
 	},
-	raiseEvent : function(event, params){
+	raiseEvent : function(eventName, params){
+		var ev = new Event(eventName, {"bubbles":false, "cancelable":false});
+		ev.data = params;
+		window.dispatchEvent(ev);
 
-		//this.log( "raiseEvent(" + event + ")" )
-
-		if(!this.listeners[event]) return;
-		for(var k in this.listeners[event]){
-			var fn = this.listeners[event][k];
+		
+		if(!this.listeners[eventName]) return;
+		for(var k in this.listeners[eventName]){
+			var fn = this.listeners[eventName][k];
 			//this.log("calling callback[" + event + "]=" + fn);
 			fn.apply(null, [params]);
 		}
@@ -111,6 +112,19 @@ wa.system = {
 
 	speak : function(text){
 		wa.sendEvent("speak", { text: text } );
+	},
+	clipboardDataSet : function(datatype, data){
+		var edata = window.btoa(data)
+		wa.sendMessage("clipboardDataSet", { window: wa.window.uuid, type: datatype, data: edata }, function(o){} );
+	},
+	clipboardDataGet : function(datatype, callback){
+		wa.sendMessage("clipboardDataGet", { window: wa.window.uuid, type: datatype }, function(o){callback(o)} );
+	},
+	clipboardDataAvailable : function(datatype, callback){
+		wa.sendMessage("clipboardDataAvailable", { window: wa.window.uuid, type: datatype }, function(o){callback(o)} );
+	},
+	clipboardTextAvailable : function(callback){
+		wa.sendMessage("clipboardDataGet", { window: wa.window.uuid }, function(o){callback(o)} );
 	},
 	clipboardSet : function(text){
 		wa.sendMessage("clipboardSet", { window: wa.window.uuid, text: text }, function(o){} );
@@ -139,6 +153,9 @@ wa.window = {
 	enableClose : function(){
 		wa.sendEvent("enableWindowClose", { window: wa.window.uuid } );
 	},
+	setTitle : function(title){
+		wa.sendEvent("setTitle", { title: title } );
+	},
 	setWidth : function(w){
 		wa.sendEvent("setSize", { width: w } );
 	},
@@ -153,7 +170,6 @@ wa.window = {
 			this.listenerInstalled = true;
 			wa.on("menuAction", wa.window.handleMenu);
 		}
-
 
 		if( !menu.hasOwnProperty("label") ) menu["label"] = "Untitled";
 		if( !menu.hasOwnProperty("menu") ) menu["menu"] = "file";
@@ -185,7 +201,8 @@ wa.window = {
 }
 wa.fs = {
 	execute : function(command, callback){
-		wa.sendMessage('execute', { "command": command }, callback );
+		var fn = (typeof(callback)=="undefined") ? function(o){} : callback;
+		wa.sendMessage('execute', { "command": command }, fn );
 	},
 	file : function(path, callback){
 		wa.sendMessage('loadfileinformation', { "path": path }, callback );
@@ -217,24 +234,29 @@ wa.fs = {
 		}
 		wa.sendMessage('dialogopenfile', ops, callback );
 	},
-	writeToFile : function(path, data, callback){
-		wa.sendMessage('writetofile', { path: path, data: data }, callback );
+	putContents : function(path, data, callback){
+		var fn = (typeof(callback)=="undefined") ? function(o){} : callback;
+		wa.sendMessage('putContents', { path: path, data: data }, fn );
 	},
 	writeBase64DataToFile : function(path, data, callback){
-		wa.sendMessage('writetofile', { path: path, data: data, base64:true }, callback );
+		var fn = (typeof(callback)=="undefined") ? function(o){} : callback;
+		wa.sendMessage('writetofile', { path: path, data: data, base64:true }, fn );
 	},
 	getContents : function(path, callback){
 		wa.sendMessage('getcontents', { path: path }, callback );
 	},
 	createDirectory : function(path, callback){
+		var fn = (typeof(callback)=="undefined") ? function(o){} : callback;
 		wa.sendMessage('createdirectory', { "path": path }, callback );
 	},
 	dialogSelectDirectory : function(callback){
 		wa.sendMessage('dialogselectdirectory', { }, callback );
 	},
 	writePNG : function(path, base64DataUrl, callback){
+		var fn = (typeof(callback)=="undefined") ? function(o){} : callback;
 		var data = base64DataUrl.replace(/^data:image\/png\;base64\,/, ''); //remove mime
 
-		wa.fs.writeBase64DataToFile(path, data, callback);
+		wa.fs.writeBase64DataToFile(path, data, fn);
 	}
 };
+
